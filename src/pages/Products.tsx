@@ -1,8 +1,15 @@
 import { useState } from 'react';
 import { Filter, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 export function Products() {
+  const navigate = useNavigate();
+
+  const handleViewDetails = (productId: number) => {
+    navigate(`/product/${productId}`);
+  };
+
   const [filters, setFilters] = useState({
     category: '',
     brand: '',
@@ -91,7 +98,12 @@ export function Products() {
                 <div className="p-4">
                   <h3 className="text-lg font-semibold mb-2">Premium Sport Shoe</h3>
                   <p className="text-neutral-600 mb-2">$199.99</p>
-                  <Button className="w-full">View Details</Button>
+                  <Button
+                    className="w-full"
+                    onClick={() => handleViewDetails(i + 1)}
+                  >
+                    View Details
+                  </Button>
                 </div>
               </div>
             ))}
