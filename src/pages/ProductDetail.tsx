@@ -1,16 +1,42 @@
 import { useEffect, useState } from 'react';
+import 'slick-carousel/slick/slick.css'; // Importing required styles for react-slick
+import 'slick-carousel/slick/slick-theme.css';
 import { Heart } from 'lucide-react';
+import Slider from 'react-slick'; // Importing Slider from react-slick
 import { Button } from '@/components/ui/button';
 import { AddToCartButton } from '@/components/AddToCartButton';
 import { v4 as uuidv4 } from 'uuid';
 
 export function ProductDetail() {
+  const settings = {
+    dots: true, // Disable dots
+    infinite: false,
+    speed: 500,
+    slidesToShow: 3,
+    slidesToScroll: 1,
+    responsive: [
+      {
+        breakpoint: 768, // For smaller screens
+        settings: {
+          slidesToShow: 2,
+        },
+      },
+      {
+        breakpoint: 480, // For very small screens
+        settings: {
+          slidesToShow: 1,
+        },
+      },
+    ],
+  };
+
   const product = {
     id: '12345',
     name: 'Premium Sport Shoe',
     price: 199.99,
     description: 'Experience ultimate comfort and style with our premium sport shoe. Perfect for both athletic performance and casual wear.',
     images: [
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff',
       'https://images.unsplash.com/photo-1542291026-7eec264c27ff',
       'https://images.unsplash.com/photo-1542291026-7eec264c27ff',
       'https://images.unsplash.com/photo-1542291026-7eec264c27ff',
@@ -88,18 +114,21 @@ export function ProductDetail() {
             alt={product.name}
             className="w-full h-96 object-cover rounded-lg"
           />
-          <div className="grid grid-cols-3 gap-4 mt-4">
-            {product.images.map((image, index) => (
-              <img
-                key={index}
-                src={image}
-                alt={`${product.name} ${index + 1}`}
-                className={`w-full h-24 object-cover rounded-lg cursor-pointer ${
-                  mainImage === index ? 'ring-2 ring-neutral-900' : ''
-                }`}
-                onClick={() => setMainImage(index)}
-              />
-            ))}
+          <div className="mt-4">
+            <Slider {...settings}>
+              {product.images.map((image, index) => (
+                <div key={index} className="px-2">
+                  <img
+                    src={image}
+                    alt={`${product.name} ${index + 1}`}
+                    className={`w-full h-24 object-cover rounded-lg ${
+                      mainImage === index ? 'border-4 border-neutral-900' : 'border border-neutral-300'
+                    } focus:outline-none cursor-pointer`}
+                    onClick={() => setMainImage(index)} // Set the main image on click
+                  />
+                </div>
+              ))}
+            </Slider>
           </div>
         </div>
 
@@ -167,7 +196,7 @@ export function ProductDetail() {
           )}
 
           <div className="flex gap-4 mt-12">
-            <AddToCartButton productId="1" />
+            <AddToCartButton productId="1" variantId={selectedVariant?.id} disabled={!selectedVariant}/>
             <Button variant="outline" className="flex items-center justify-center">
               <Heart className="h-5 w-5" />
             </Button>
