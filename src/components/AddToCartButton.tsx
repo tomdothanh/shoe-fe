@@ -2,28 +2,22 @@ import { useAuth } from '@/lib/authContext';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { productClient } from '@/clients/productClient';
+import { useCart } from '@/lib/cartContext';
 
 export function AddToCartButton({ productId, variantId, disabled }: { productId: string; variantId: string; disabled: boolean }) {
   const { isAuthenticated } = useAuth();
+  const { addToCart } = useCart();
   const navigate = useNavigate();
 
   const handleAddToCart = async () => {
+    console.log('Adding to cart:', productId, variantId);
     if (!isAuthenticated) {
       const currentPath = `/product/${productId}`;
       navigate(`/login?redirect=${encodeURIComponent(currentPath)}`);
       return;
     }
 
-    try {
-      const response = await productClient.post('/v1/cart/add', {
-        variantId,
-        quantity: 1
-      });
-      console.log('Product added to cart:', response.data);
-    } catch (error) {
-      console.error('Failed to add product to cart:', error);
-    }
+    await addToCart(productId, variantId, 1);
   };
 
   return (

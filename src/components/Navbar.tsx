@@ -1,11 +1,13 @@
-import { ShoppingCart, User, LogOut, LogIn } from "lucide-react";
+import { ShoppingCart, User, LogIn } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { useAuth } from "@/lib/authContext";
+import { useCart } from "@/lib/cartContext";
 import { useEffect, useState } from "react";
 
 export function Navbar() {
   const { isAuthenticated, logout } = useAuth();
+  const { totalItems } = useCart();
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false); 
   const [fullName, setFullName] = useState<string | null>(null);
@@ -53,9 +55,11 @@ export function Navbar() {
             <Link to="/cart">
               <Button variant="ghost" className="relative">
                 <ShoppingCart className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center">
-                  0
-                </span>
+                {totalItems > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center">
+                    {totalItems}
+                  </span>
+                )}
               </Button>
             </Link>
 
