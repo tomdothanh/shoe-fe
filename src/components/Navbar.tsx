@@ -7,12 +7,14 @@ import { useEffect, useState } from "react";
 
 export function Navbar() {
   const { isAuthenticated, logout } = useAuth();
-  const { totalItems } = useCart();
+  const { totalItems, clearCart } = useCart();
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false); 
   const [fullName, setFullName] = useState<string | null>(null);
 
+
   const handleLogout = () => {
+    clearCart(); // Clear the cart before logging out
     logout();
     navigate("/"); // Redirect to home after logout
   };

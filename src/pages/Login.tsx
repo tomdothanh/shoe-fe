@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/authContext';
+import { useCart } from '@/lib/cartContext';
 
 export function Login() {
   const [username, setUsername] = useState('');
@@ -11,6 +12,7 @@ export function Login() {
   const location = useLocation();
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { fetchCart } = useCart();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +37,7 @@ export function Login() {
       localStorage.setItem('token', token);
 
       login(); // Update the auth state
+      fetchCart();
 
       // Redirect to the original page or default to home
       const redirectTo = new URLSearchParams(location.search).get('redirect') || '/';

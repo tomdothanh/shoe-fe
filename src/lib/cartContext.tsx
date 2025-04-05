@@ -19,6 +19,8 @@ interface CartContextType {
   addToCart: (productId: string, variantId: string, quantity: number) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
+  clearCart: () => void;
+  fetchCart: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -80,6 +82,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const clearCart = () => {
+    console.log("CartProvider: Clearing cart...");
+    setItems([]);
+  };
+
   const totalItems = items.length;
   console.log("CartProvider: Current totalItems:", totalItems);
 
@@ -91,6 +98,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         addToCart,
         removeFromCart,
         updateQuantity,
+        fetchCart,
+        clearCart
       }}
     >
       {children}
