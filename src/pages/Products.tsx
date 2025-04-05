@@ -1,20 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Filter, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { productClient } from '@/clients/productClient';
+import { Product } from '@/types';
 
 export function Products() {
   const navigate = useNavigate();
-
-  const handleViewDetails = (productId: number) => {
-    navigate(`/product/${productId}`);
-  };
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState({
     category: '',
     brand: '',
     priceRange: '',
   });
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await productClient.get('/v1/products');
+        setProducts(response.data);
+        setError(null);
+      } catch (err) {
+        setError('Failed to fetch products. Please try again later.');
+        console.error('Error fetching products:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  const handleViewDetails = (productId: string) => {
+    navigate(`/product/${productId}`);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -87,27 +109,35 @@ export function Products() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[...Array(9)].map((_, i) => (
-              <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden">
-                <img
-                  src={`https://images.unsplash.com/photo-1542291026-7eec264c27ff`}
-                  alt={`Product ${i + 1}`}
-                  className="w-full h-48 object-cover"
-                />
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold mb-2">Premium Sport Shoe</h3>
-                  <p className="text-neutral-600 mb-2">$199.99</p>
-                  <Button
-                    className="w-full"
-                    onClick={() => handleViewDetails(i + 1)}
-                  >
-                    View Details
-                  </Button>
+          {isLoading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-neutral-900"></div>
+            </div>
+          ) : error ? (
+            <div className="text-center text-red-500 p-4">{error}</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {products.map((product) => (
+                <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+                  <img
+                    src={product.imageUrl || 'https://via.placeholder.com/300'}
+                    alt={product.name}
+                    className="w-full h-48 object-cover"
+                  />
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold mb-2">{product.name}</h3>
+                    <p className="text-neutral-600 mb-2">${product.price?.toFixed(2)}</p>
+                    <Button
+                      className="w-full"
+                      onClick={() => handleViewDetails(product.id)}
+                    >
+                      View Details
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

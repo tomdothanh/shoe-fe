@@ -1,13 +1,19 @@
 export interface Product {
-  id: number;
+  id: string;
   name: string;
   price: number;
   description: string;
-  images: string[];
-  sizes: number[];
-  colors: string[];
-  category: string;
-  brand: string;
+  imageUrl: string;
+}
+
+export interface ProductVariant {
+  id: string;
+  productId: string;
+  color: string;
+  size: string;
+  quantity: number;
+  price: number;
+  imageUrls: string[];
 }
 
 export interface CartItem {
