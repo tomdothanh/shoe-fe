@@ -88,6 +88,12 @@ export function Navbar() {
                         Edit User
                       </button>
                       <button
+                        onClick={() => navigate("/orders")}
+                        className="block w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
+                      >
+                        My Orders
+                      </button>
+                      <button
                         onClick={handleLogout}
                         className="block w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
                       >

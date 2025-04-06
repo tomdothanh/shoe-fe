@@ -3,10 +3,13 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cartContext";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { initPayment } from "@/clients/productClient";
 
 export function Cart() {
-  const { items, removeFromCart, updateQuantity } = useCart();
+  const { items, removeFromCart, updateQuantity, fetchCart } = useCart();
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);;
 
   const handleQuantityChange = async (itemId: string, newQuantity: number) => {
     if (newQuantity > 0) {
@@ -18,6 +21,19 @@ export function Cart() {
   const tax = subtotal * 0.08;
   const shipping = items.length > 0 ? 9.99 : 0;
   const total = subtotal + tax + shipping;
+
+  const handleProceedToCheckout = async () => {
+    setIsLoading(true);
+    try {
+      const response = await initPayment();
+      fetchCart();
+      navigate("/checkout", { state: { orderId: response.data.orderId } });
+    } catch (error) {
+      console.error("Error initializing payment:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -139,13 +155,14 @@ export function Cart() {
                 <Button variant="outline">Apply</Button>
               </div>
             </div>
-
-            <Button 
-              className="w-full mt-6"
-              onClick={() => navigate("/checkout")}
-              disabled={items.length === 0}
+              
+            <div className="mt-6"></div>
+            <Button
+              onClick={handleProceedToCheckout}
+              disabled={items.length === 0 || isLoading}
+              className="w-full"
             >
-              Proceed to Checkout
+              {isLoading ? "Processing..." : "Proceed to Checkout"}
             </Button>
           </div>
         </div>

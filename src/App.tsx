@@ -6,6 +6,7 @@ import { ProductDetail } from './pages/ProductDetail';
 import { Cart } from './pages/Cart';
 import { Login } from './pages/Login';
 import { Checkout } from './pages/Checkout';
+import { Orders } from './pages/Orders';
 import { AuthProvider } from './lib/authContext';
 import { CartProvider } from './lib/cartContext';
 
@@ -23,6 +24,7 @@ function App() {
               <Route path="/cart" element={<Cart />} />
               <Route path="/login" element={<Login />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/orders" element={<Orders />} />
             </Routes>
           </div>
         </CartProvider>

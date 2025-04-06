@@ -28,3 +28,28 @@ export interface User {
   email: string;
   name: string;
 }
+
+export interface Order {
+  id: string;
+  orderNumber: string;
+  userEmail: string;
+  subtotal: number;
+  shipping: number;
+  tax: number;
+  totalAmount: number;
+  status: String;
+  clientSecret: string;
+  createdAt: Date;
+}
+
+export interface OrderItem {
+  id: string;
+  productId: string;
+  variantId: string;
+  quantity: number;
+  price: number;
+  name: string;
+  imageUrl: string;
+  color: string;
+  size: string;
+}

@@ -1,11 +1,12 @@
 import { useState, ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cartContext";
-import { ShoppingCart, ArrowLeft, CreditCard } from "lucide-react";
+import { ShoppingCart, CreditCard } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useNavigate } from "react-router-dom";
-import { getShippingInfo, createShippingInfo, updateShippingInfo, initPayment } from "@/clients/productClient";
+import { useNavigate, useLocation } from "react-router-dom";
+import { getShippingInfo, createShippingInfo, updateShippingInfo, getOrderDetails } from "@/clients/productClient";
 import { formatCardNumber, detectCardType, CardType } from "@/utils/cardUtils";
+import { Order, OrderItem } from "@/types";
 
 type Step = "shipping" | "review" | "payment";
 
@@ -24,8 +25,13 @@ interface ShippingErrors {
 export function Checkout() {
   const { items } = useCart();
   const navigate = useNavigate();
+  const location = useLocation();
   const [currentStep, setCurrentStep] = useState<Step>("shipping");
-  const [paymentSecret, setPaymentSecret] = useState<string>("");
+  const [clientSecret, setClientSecret] = useState<string>("");
+  const [orderId, setOrderId] = useState<string>(location.state?.orderId || "");
+  const [orderNumber, setOrderNumber] = useState<string>("");
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const [order, setOrder] = useState<Order>();
   const [formData, setFormData] = useState({
     shipping: {
       firstName: "",
@@ -57,6 +63,26 @@ export function Checkout() {
   const [cardType, setCardType] = useState<CardType>('unknown');
 
   useEffect(() => {
+    const fetchOrderDetails = async () => {
+      try {
+        const response = await getOrderDetails(orderId);
+        setOrderNumber(response.data.order.orderNumber);
+        setClientSecret(response.data.order.clientSecret);
+        setOrder(response.data.order);
+        setOrderItems(response.data.items);
+
+        if (!response.data.order.clientSecret || !orderId) {
+          navigate("/cart");
+        }
+      } catch (error) {
+        console.error("Error fetching order details:", error);
+      }
+    };
+
+    fetchOrderDetails();
+  }, [orderId]);
+
+  useEffect(() => {
     const loadDefaultShippingInfo = async () => {
       try {
         const response = await getShippingInfo();
@@ -77,12 +103,6 @@ export function Checkout() {
 
     loadDefaultShippingInfo();
   }, []);
-
-  useEffect(() => {
-    if (items.length === 0) {
-      navigate("/cart");
-    }
-  }, [items, navigate]);
 
   const validateShippingForm = () => {
     const errors: ShippingErrors = {};
@@ -275,25 +295,8 @@ export function Checkout() {
       }
     } else if (currentStep === "review") {
       setCurrentStep("payment");
-    } else {
-      // Handle order submission
-      setIsLoading(true);
-      try {
-        const response = await initPayment(total);
-        setPaymentSecret(response.data.secret);
-        console.log("Payment initialized with secret:", response.data.secret);
-      } catch (error) {
-        console.error("Error initializing payment:", error);
-      } finally {
-        setIsLoading(false);
-      }
     }
   };
-
-  const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0);
-  const tax = subtotal * 0.08;
-  const shipping = 9.99;
-  const total = subtotal + tax + shipping;
 
   const renderShippingForm = () => (
     <div className="space-y-4">
@@ -518,8 +521,14 @@ export function Checkout() {
       <div className="bg-white rounded-lg border p-6">
         <div className="flex justify-between font-semibold text-lg">
           <span>Amount to Pay</span>
-          <span className="text-primary">${total.toFixed(2)}</span>
+          <span className="text-primary">${order?.totalAmount.toFixed(2)}</span>
         </div>
+        {orderNumber && (
+          <div className="mt-4 text-sm text-gray-600">
+            <span>Order Number: </span>
+            <span className="font-medium">{orderNumber}</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -529,7 +538,7 @@ export function Checkout() {
       <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
         <h2 className="text-xl font-semibold mb-6 pb-4 border-b">Order Summary</h2>
         <div className="space-y-4">
-          {items.map((item) => (
+          {orderItems?.map((item) => (
             <div key={item.id} className="flex items-center gap-4">
               <div className="relative">
                 <img 
@@ -556,19 +565,19 @@ export function Checkout() {
           <div className="space-y-3 pt-4 border-t">
             <div className="flex justify-between text-gray-600">
               <span>Subtotal</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>${order?.subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-gray-600">
               <span>Shipping</span>
-              <span>${shipping.toFixed(2)}</span>
+              <span>${order?.shipping.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-gray-600">
               <span>Tax</span>
-              <span>${tax.toFixed(2)}</span>
+              <span>${order?.tax.toFixed(2)}</span>
             </div>
             <div className="flex justify-between font-semibold text-lg pt-2 border-t">
               <span>Total</span>
-              <span className="text-primary">${total.toFixed(2)}</span>
+              <span className="text-primary">${order?.totalAmount.toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -621,7 +630,7 @@ export function Checkout() {
                 onClick={handleContinue}
                 disabled={isLoading}
               >
-                {isLoading ? "Saving..." : currentStep === "payment" ? "Place Order" : "Continue"}
+                {isLoading ? "Saving..." : "Continue"}
               </Button>
             </div>
           </div>
