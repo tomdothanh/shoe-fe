@@ -2,20 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { productClient } from '@/clients/productClient';
 import { useNavigate } from 'react-router-dom';
-
-interface Order {
-  id: string;
-  orderNumber: string;
-  status: string;
-  totalAmount: number;
-  createdAt: string;
-  items: {
-    name: string;
-    quantity: number;
-    price: number;
-    imageUrl: string;
-  }[];
-}
+import { Order } from '@/types';
 
 export function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -89,27 +76,6 @@ export function Orders() {
                   </span>
                   <span className="text-lg font-semibold">${order.totalAmount.toFixed(2)}</span>
                 </div>
-              </div>
-
-              <div className="space-y-4">
-                {order.items.map((item, index) => (
-                  <div key={index} className="flex items-center gap-4 py-2 border-t first:border-t-0">
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      className="w-16 h-16 object-cover rounded-md"
-                    />
-                    <div className="flex-1">
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-gray-500">
-                        Quantity: {item.quantity} × ${item.price.toFixed(2)}
-                      </p>
-                    </div>
-                    <p className="font-medium">
-                      ${(item.price * item.quantity).toFixed(2)}
-                    </p>
-                  </div>
-                ))}
               </div>
             </div>
           ))}
