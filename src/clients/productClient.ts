@@ -30,4 +30,16 @@ productClient.interceptors.response.use(
   }
 );
 
+export const getShippingInfo = async () => {
+  return productClient.get('/v1/shipping-info');
+};
+
+export const createShippingInfo = async (shippingInfo: any) => {
+  return productClient.post('/v1/shipping-info', shippingInfo);
+};
+
+export const updateShippingInfo = async (shippingInfo: any) => {
+  return productClient.put('/v1/shipping-info', shippingInfo);
+};
+
 export default productClient;

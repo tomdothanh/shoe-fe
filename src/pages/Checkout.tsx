@@ -1,9 +1,10 @@
-import { useState, ChangeEvent } from "react";
+import { useState, ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cartContext";
 import { ShoppingCart, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
+import { getShippingInfo, createShippingInfo, updateShippingInfo } from "@/clients/productClient";
 
 type Step = "shipping" | "payment" | "review";
 
@@ -43,6 +44,30 @@ export function Checkout() {
     },
   });
   const [shippingErrors, setShippingErrors] = useState<ShippingErrors>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasExistingShippingInfo, setHasExistingShippingInfo] = useState(false);
+
+  useEffect(() => {
+    const loadDefaultShippingInfo = async () => {
+      try {
+        const response = await getShippingInfo();
+        if (response.data) {
+          setFormData(prev => ({
+            ...prev,
+            shipping: {
+              ...prev.shipping,
+              ...response.data
+            }
+          }));
+          setHasExistingShippingInfo(true);
+        }
+      } catch (error) {
+        console.error("Error loading shipping info:", error);
+      }
+    };
+
+    loadDefaultShippingInfo();
+  }, []);
 
   const validateShippingForm = () => {
     const errors: ShippingErrors = {};
@@ -90,8 +115,8 @@ export function Checkout() {
     // ZIP Code validation
     if (!shipping.zipCode.trim()) {
       errors.zipCode = "ZIP code is required";
-    } else if (!/^\d{5}(-\d{4})?$/.test(shipping.zipCode)) {
-      errors.zipCode = "Please enter a valid ZIP code";
+    } else if (!/^\d+$/.test(shipping.zipCode)) {
+      errors.zipCode = "ZIP code must contain only numbers";
     }
 
     // Country validation
@@ -120,10 +145,22 @@ export function Checkout() {
     }
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (currentStep === "shipping") {
       if (validateShippingForm()) {
-        setCurrentStep("payment");
+        setIsLoading(true);
+        try {
+          if (hasExistingShippingInfo) {
+            await updateShippingInfo(formData.shipping);
+          } else {
+            await createShippingInfo(formData.shipping);
+          }
+          setCurrentStep("payment");
+        } catch (error) {
+          console.error("Error saving shipping info:", error);
+        } finally {
+          setIsLoading(false);
+        }
       }
     } else if (currentStep === "payment") {
       setCurrentStep("review");
@@ -402,8 +439,11 @@ export function Checkout() {
                   Back
                 </Button>
               )}
-              <Button onClick={handleContinue}>
-                {currentStep === "review" ? "Place Order" : "Continue"}
+              <Button 
+                onClick={handleContinue}
+                disabled={isLoading}
+              >
+                {isLoading ? "Saving..." : currentStep === "review" ? "Place Order" : "Continue"}
               </Button>
             </div>
           </div>
