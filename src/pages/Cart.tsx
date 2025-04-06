@@ -1,10 +1,12 @@
-import { Minus, Plus, Trash2, ShoppingCart } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingCart, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cartContext";
+import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 
 export function Cart() {
   const { items, removeFromCart, updateQuantity } = useCart();
+  const navigate = useNavigate();
 
   const handleQuantityChange = async (itemId: string, newQuantity: number) => {
     if (newQuantity > 0) {
@@ -12,10 +14,24 @@ export function Cart() {
     }
   };
 
+  const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0);
+  const tax = subtotal * 0.08;
+  const shipping = 9.99;
+  const total = subtotal + tax + shipping;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center gap-2 mb-8">
+      <div className="flex items-center gap-4 mb-8">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate(-1)}
+          className="hover:bg-gray-100"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
         <ShoppingCart className="h-12 w-12" />
+        <h1 className="text-3xl font-bold">Cart</h1>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
@@ -85,34 +101,29 @@ export function Cart() {
           {/* Order Summary */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-            <div className="space-y-2 mb-4">
-              <div className="flex justify-between">
-                <span>Subtotal</span>
-                <span>
-                  ${items.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Shipping</span>
-                <span>$9.99</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Tax</span>
-                <span>
-                  ${(items.reduce((total, item) => total + item.price * item.quantity, 0) * 0.08).toFixed(2)}
-                </span>
-              </div>
-              <div className="border-t pt-2 mt-2">
+            <div className="space-y-2">
+              {items.map((item) => (
+                <div key={item.id} className="flex justify-between">
+                  <span>{item.name} × {item.quantity}</span>
+                  <span>${(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+              ))}
+              <div className="border-t pt-2">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>${subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Shipping</span>
+                  <span>${shipping.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tax</span>
+                  <span>${tax.toFixed(2)}</span>
+                </div>
                 <div className="flex justify-between font-semibold">
                   <span>Total</span>
-                  <span>
-                    $
-                    {(
-                      items.reduce((total, item) => total + item.price * item.quantity, 0) +
-                      9.99 +
-                      items.reduce((total, item) => total + item.price * item.quantity, 0) * 0.08
-                    ).toFixed(2)}
-                  </span>
+                  <span>${total.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -129,7 +140,12 @@ export function Cart() {
               </div>
             </div>
 
-            <Button className="w-full mt-6">Proceed to Checkout</Button>
+            <Button 
+              className="w-full mt-6"
+              onClick={() => navigate("/checkout")}
+            >
+              Proceed to Checkout
+            </Button>
           </div>
         </div>
       </div>
