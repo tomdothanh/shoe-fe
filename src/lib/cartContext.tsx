@@ -4,13 +4,13 @@ import { productClient } from "@/clients/productClient";
 interface CartItem {
   id: string;
   productId: string;
+  variantId: string;
   quantity: number;
-  product: {
-    id: string;
-    name: string;
-    price: number;
-    image: string;
-  };
+  price: number;
+  name: string;
+  imageUrl: string;
+  color: string;
+  size: string;
 }
 
 interface CartContextType {
@@ -70,12 +70,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const updateQuantity = async (itemId: string, quantity: number) => {
     try {
       console.log("CartProvider: Updating quantity - itemId:", itemId, "quantity:", quantity);
-      const response = await productClient.put(`/v1/cart/${itemId}`, { quantity });
-      setItems((prevItems) =>
-        prevItems.map((item) =>
-          item.id === itemId ? { ...item, quantity: response.data.quantity } : item
-        )
-      );
+      await productClient.put(`/v1/cart/${itemId}`, { quantity });
+      await fetchCart();
     } catch (error) {
       console.error("CartProvider: Error updating quantity:", error);
       throw error;

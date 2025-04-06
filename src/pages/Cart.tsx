@@ -1,41 +1,83 @@
-import { Minus, Plus, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Minus, Plus, Trash2, ShoppingCart } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useCart } from "@/lib/cartContext";
+import { Input } from "@/components/ui/input";
 
 export function Cart() {
+  const { items, removeFromCart, updateQuantity } = useCart();
+
+  const handleQuantityChange = async (itemId: string, newQuantity: number) => {
+    if (newQuantity > 0) {
+      await updateQuantity(itemId, newQuantity);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold mb-8">Shopping Cart</h1>
+      <div className="flex items-center gap-2 mb-8">
+        <ShoppingCart className="h-12 w-12" />
+      </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
         <div className="lg:w-2/3">
           {/* Cart Items */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-4">
-            {[1, 2].map((item) => (
-              <div key={item} className="flex items-center py-4 border-b last:border-b-0">
-                <img
-                  src="https://images.unsplash.com/photo-1542291026-7eec264c27ff"
-                  alt="Product"
-                  className="w-24 h-24 object-cover rounded-md"
-                />
-                <div className="flex-1 ml-4">
-                  <h3 className="text-lg font-semibold">Premium Sport Shoe</h3>
-                  <p className="text-neutral-600">Size: 9 | Color: Black</p>
-                  <p className="text-lg font-semibold mt-2">$199.99</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="icon">
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <span className="w-8 text-center">1</span>
-                  <Button variant="outline" size="icon">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="ml-2">
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
-                </div>
+            {items.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-xl text-gray-600">Your cart is empty</p>
               </div>
-            ))}
+            ) : (
+              items.map((item) => (
+                <div key={item.id} className="flex items-center py-4 border-b last:border-b-0">
+                  <img
+                    src={item.imageUrl}
+                    alt={item.name}
+                    className="w-24 h-24 object-cover rounded-md"
+                  />
+                  <div className="flex-1 ml-4">
+                    <h3 className="text-lg font-semibold">{item.name}</h3>
+                    <p className="text-neutral-600">
+                      Size: {item.size} | Color: {item.color}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <p className="text-lg font-semibold">${item.price.toFixed(2)}</p>
+                      <span className="text-gray-500">×</span>
+                      <p className="text-lg font-semibold">{item.quantity}</p>
+                      <span className="text-gray-500">=</span>
+                      <p className="text-lg font-semibold text-green-600">
+                        ${(item.price * item.quantity).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                      disabled={item.quantity <= 1}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <span className="w-8 text-center">{item.quantity}</span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="ml-2"
+                      onClick={() => removeFromCart(item.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -46,7 +88,9 @@ export function Cart() {
             <div className="space-y-2 mb-4">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span>$399.98</span>
+                <span>
+                  ${items.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>Shipping</span>
@@ -54,16 +98,38 @@ export function Cart() {
               </div>
               <div className="flex justify-between">
                 <span>Tax</span>
-                <span>$32.00</span>
+                <span>
+                  ${(items.reduce((total, item) => total + item.price * item.quantity, 0) * 0.08).toFixed(2)}
+                </span>
               </div>
               <div className="border-t pt-2 mt-2">
                 <div className="flex justify-between font-semibold">
                   <span>Total</span>
-                  <span>$441.97</span>
+                  <span>
+                    $
+                    {(
+                      items.reduce((total, item) => total + item.price * item.quantity, 0) +
+                      9.99 +
+                      items.reduce((total, item) => total + item.price * item.quantity, 0) * 0.08
+                    ).toFixed(2)}
+                  </span>
                 </div>
               </div>
             </div>
-            <Button className="w-full">Proceed to Checkout</Button>
+
+            {/* Coupon Section */}
+            <div className="mt-6">
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="Enter coupon code"
+                  className="flex-1"
+                />
+                <Button variant="outline">Apply</Button>
+              </div>
+            </div>
+
+            <Button className="w-full mt-6">Proceed to Checkout</Button>
           </div>
         </div>
       </div>
