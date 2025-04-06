@@ -42,4 +42,11 @@ export const updateShippingInfo = async (shippingInfo: any) => {
   return productClient.put('/v1/shipping-info', shippingInfo);
 };
 
+export const initPayment = async (amount: number) => {
+  return productClient.post('/v1/payment/init', { 
+    paymentMethodId: "pm_1Q2222222222222222222222",
+    amount 
+  });
+};
+
 export default productClient;

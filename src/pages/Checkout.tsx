@@ -4,7 +4,7 @@ import { useCart } from "@/lib/cartContext";
 import { ShoppingCart, ArrowLeft, CreditCard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
-import { getShippingInfo, createShippingInfo, updateShippingInfo } from "@/clients/productClient";
+import { getShippingInfo, createShippingInfo, updateShippingInfo, initPayment } from "@/clients/productClient";
 import { formatCardNumber, detectCardType, CardType } from "@/utils/cardUtils";
 
 type Step = "shipping" | "payment" | "review";
@@ -25,6 +25,7 @@ export function Checkout() {
   const { items } = useCart();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<Step>("shipping");
+  const [paymentSecret, setPaymentSecret] = useState<string>("");
   const [formData, setFormData] = useState({
     shipping: {
       firstName: "",
@@ -38,10 +39,10 @@ export function Checkout() {
       country: "United States",
     },
     payment: {
-      cardNumber: "",
-      cardName: "",
-      expiryDate: "",
-      cvv: "",
+      cardNumber: "4242 4242 4242 4242", // Test Visa card number
+      cardName: "TEST USER",
+      expiryDate: "12/25", // December 2025
+      cvv: "123",
     },
   });
   const [shippingErrors, setShippingErrors] = useState<ShippingErrors>({});
@@ -272,7 +273,16 @@ export function Checkout() {
       }
     } else {
       // Handle order submission
-      console.log("Submitting order...");
+      setIsLoading(true);
+      try {
+        const response = await initPayment(total);
+        setPaymentSecret(response.data.secret);
+        console.log("Payment initialized with secret:", response.data.secret);
+      } catch (error) {
+        console.error("Error initializing payment:", error);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 

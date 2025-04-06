@@ -16,7 +16,7 @@ export function Cart() {
 
   const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0);
   const tax = subtotal * 0.08;
-  const shipping = 9.99;
+  const shipping = items.length > 0 ? 9.99 : 0;
   const total = subtotal + tax + shipping;
 
   return (
@@ -143,6 +143,7 @@ export function Cart() {
             <Button 
               className="w-full mt-6"
               onClick={() => navigate("/checkout")}
+              disabled={items.length === 0}
             >
               Proceed to Checkout
             </Button>
