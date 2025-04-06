@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { getShippingInfo, createShippingInfo, updateShippingInfo, initPayment } from "@/clients/productClient";
 import { formatCardNumber, detectCardType, CardType } from "@/utils/cardUtils";
 
-type Step = "shipping" | "payment" | "review";
+type Step = "shipping" | "review" | "payment";
 
 interface ShippingErrors {
   firstName?: string;
@@ -266,17 +266,15 @@ export function Checkout() {
           } else {
             await createShippingInfo(formData.shipping);
           }
-          setCurrentStep("payment");
+          setCurrentStep("review");
         } catch (error) {
           console.error("Error saving shipping info:", error);
         } finally {
           setIsLoading(false);
         }
       }
-    } else if (currentStep === "payment") {
-      if (validatePaymentForm()) {
-        setCurrentStep("review");
-      }
+    } else if (currentStep === "review") {
+      setCurrentStep("payment");
     } else {
       // Handle order submission
       setIsLoading(true);
@@ -516,34 +514,6 @@ export function Checkout() {
         </div>
       </div>
 
-      {/* Payment Information Section */}
-      <div className="bg-white rounded-lg border p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Payment Information</h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setCurrentStep("payment")}
-            className="text-primary hover:text-primary/80"
-          >
-            Edit
-          </Button>
-        </div>
-        <div className="space-y-2 text-gray-600">
-          <div className="flex items-center gap-2">
-            {cardType === 'visa' && (
-              <img src="/visa.png" alt="Visa" className="h-6 w-auto" />
-            )}
-            {cardType === 'mastercard' && (
-              <img src="/mastercard.png" alt="Mastercard" className="h-6 w-auto" />
-            )}
-            <p>•••• •••• •••• {formData.payment.cardNumber.slice(-4)}</p>
-          </div>
-          <p className="text-sm">Expires: {formData.payment.expiryDate}</p>
-          <p className="text-sm">Cardholder: {formData.payment.cardName}</p>
-        </div>
-      </div>
-
       {/* Order Summary Section */}
       <div className="bg-white rounded-lg border p-6">
         <div className="flex justify-between font-semibold text-lg">
@@ -609,14 +579,6 @@ export function Checkout() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center gap-4 mb-8">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/cart")}
-          className="hover:bg-gray-100"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
         <ShoppingCart className="h-12 w-12" />
         <h1 className="text-3xl font-bold">Checkout</h1>
       </div>
@@ -631,26 +593,26 @@ export function Checkout() {
                 Shipping
               </span>
               <span
-                className={`text-sm font-medium ${currentStep === "payment" ? "text-primary" : "text-gray-500"}`}
-              >
-                Payment
-              </span>
-              <span
                 className={`text-sm font-medium ${currentStep === "review" ? "text-primary" : "text-gray-500"}`}
               >
                 Review
               </span>
+              <span
+                className={`text-sm font-medium ${currentStep === "payment" ? "text-primary" : "text-gray-500"}`}
+              >
+                Payment
+              </span>
             </div>
 
             {currentStep === "shipping" && renderShippingForm()}
-            {currentStep === "payment" && renderPaymentForm()}
             {currentStep === "review" && renderOrderReview()}
+            {currentStep === "payment" && renderPaymentForm()}
 
             <div className="mt-6 flex justify-between">
               {currentStep !== "shipping" && (
                 <Button
                   variant="outline"
-                  onClick={() => setCurrentStep(currentStep === "payment" ? "shipping" : "payment")}
+                  onClick={() => setCurrentStep(currentStep === "review" ? "shipping" : "review")}
                 >
                   Back
                 </Button>
@@ -659,7 +621,7 @@ export function Checkout() {
                 onClick={handleContinue}
                 disabled={isLoading}
               >
-                {isLoading ? "Saving..." : currentStep === "review" ? "Place Order" : "Continue"}
+                {isLoading ? "Saving..." : currentStep === "payment" ? "Place Order" : "Continue"}
               </Button>
             </div>
           </div>
