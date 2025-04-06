@@ -78,6 +78,12 @@ export function Checkout() {
     loadDefaultShippingInfo();
   }, []);
 
+  useEffect(() => {
+    if (items.length === 0) {
+      navigate("/cart");
+    }
+  }, [items, navigate]);
+
   const validateShippingForm = () => {
     const errors: ShippingErrors = {};
     const { shipping } = formData;
