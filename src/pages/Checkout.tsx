@@ -1,10 +1,11 @@
 import { useState, ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cartContext";
-import { ShoppingCart, ArrowLeft } from "lucide-react";
+import { ShoppingCart, ArrowLeft, CreditCard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { getShippingInfo, createShippingInfo, updateShippingInfo } from "@/clients/productClient";
+import { formatCardNumber, detectCardType, CardType } from "@/utils/cardUtils";
 
 type Step = "shipping" | "payment" | "review";
 
@@ -46,6 +47,7 @@ export function Checkout() {
   const [shippingErrors, setShippingErrors] = useState<ShippingErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [hasExistingShippingInfo, setHasExistingShippingInfo] = useState(false);
+  const [cardType, setCardType] = useState<CardType>('unknown');
 
   useEffect(() => {
     const loadDefaultShippingInfo = async () => {
@@ -143,6 +145,41 @@ export function Checkout() {
         [field]: undefined,
       }));
     }
+  };
+
+  const handleCardNumberChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatCardNumber(e.target.value);
+    const type = detectCardType(formattedValue);
+    setCardType(type);
+    handleInputChange("payment", "cardNumber", formattedValue);
+  };
+
+  const handleCardNameChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.toUpperCase();
+    handleInputChange("payment", "cardName", value);
+  };
+
+  const handleExpiryDateChange = (e: ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    
+    // Format as MM/YY
+    if (value.length > 2) {
+      value = value.slice(0, 2) + '/' + value.slice(2, 4);
+    }
+    
+    // Validate month (01-12)
+    const month = parseInt(value.slice(0, 2));
+    if (month > 12) {
+      value = '12' + value.slice(2);
+    }
+    
+    handleInputChange("payment", "expiryDate", value);
+  };
+
+  const handleCVVChange = (e: ChangeEvent<HTMLInputElement>) => {
+    // Only allow 3 digits
+    const value = e.target.value.replace(/\D/g, '').slice(0, 3);
+    handleInputChange("payment", "cvv", value);
   };
 
   const handleContinue = async () => {
@@ -300,18 +337,33 @@ export function Checkout() {
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium mb-1">Card Number</label>
-        <Input
-          value={formData.payment.cardNumber}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange("payment", "cardNumber", e.target.value)}
-          placeholder="1234 5678 9012 3456"
-          required
-        />
+        <div className="relative">
+          <Input
+            value={formData.payment.cardNumber}
+            onChange={handleCardNumberChange}
+            placeholder="XXXX XXXX XXXX XXXX"
+            maxLength={19} // 16 digits + 3 spaces
+            className="pr-12"
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            {cardType === 'visa' && (
+              <img src="/visa.png" alt="Visa" className="h-6 w-auto" />
+            )}
+            {cardType === 'mastercard' && (
+              <img src="/mastercard.png" alt="Mastercard" className="h-6 w-auto" />
+            )}
+            {cardType === 'unknown' && (
+              <CreditCard className="h-6 w-6 text-gray-400" />
+            )}
+          </div>
+        </div>
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Cardholder Name</label>
         <Input
           value={formData.payment.cardName}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange("payment", "cardName", e.target.value)}
+          onChange={handleCardNameChange}
+          placeholder="JOHN DOE"
           required
         />
       </div>
@@ -320,8 +372,9 @@ export function Checkout() {
           <label className="block text-sm font-medium mb-1">Expiry Date</label>
           <Input
             value={formData.payment.expiryDate}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange("payment", "expiryDate", e.target.value)}
+            onChange={handleExpiryDateChange}
             placeholder="MM/YY"
+            maxLength={5}
             required
           />
         </div>
@@ -329,8 +382,9 @@ export function Checkout() {
           <label className="block text-sm font-medium mb-1">CVV</label>
           <Input
             value={formData.payment.cvv}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange("payment", "cvv", e.target.value)}
+            onChange={handleCVVChange}
             placeholder="123"
+            maxLength={3}
             required
           />
         </div>
@@ -339,50 +393,115 @@ export function Checkout() {
   );
 
   const renderOrderReview = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Shipping Information</h3>
-        <div className="bg-gray-50 p-4 rounded-md">
-          <p>{formData.shipping.firstName} {formData.shipping.lastName}</p>
+    <div className="space-y-8">
+      {/* Shipping Information Section */}
+      <div className="bg-white rounded-lg border p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Shipping Information</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setCurrentStep("shipping")}
+            className="text-primary hover:text-primary/80"
+          >
+            Edit
+          </Button>
+        </div>
+        <div className="space-y-2 text-gray-600">
+          <p className="font-medium">{formData.shipping.firstName} {formData.shipping.lastName}</p>
           <p>{formData.shipping.address}</p>
           <p>{formData.shipping.city}, {formData.shipping.state} {formData.shipping.zipCode}</p>
           <p>{formData.shipping.country}</p>
-          <p>{formData.shipping.email}</p>
-          <p>{formData.shipping.phone}</p>
+          <div className="pt-2">
+            <p className="text-sm">{formData.shipping.email}</p>
+            <p className="text-sm">{formData.shipping.phone}</p>
+          </div>
         </div>
       </div>
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Payment Information</h3>
-        <div className="bg-gray-50 p-4 rounded-md">
-          <p>Card ending in {formData.payment.cardNumber.slice(-4)}</p>
-          <p>Expires: {formData.payment.expiryDate}</p>
+
+      {/* Payment Information Section */}
+      <div className="bg-white rounded-lg border p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Payment Information</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setCurrentStep("payment")}
+            className="text-primary hover:text-primary/80"
+          >
+            Edit
+          </Button>
+        </div>
+        <div className="space-y-2 text-gray-600">
+          <div className="flex items-center gap-2">
+            {cardType === 'visa' && (
+              <img src="/visa.png" alt="Visa" className="h-6 w-auto" />
+            )}
+            {cardType === 'mastercard' && (
+              <img src="/mastercard.png" alt="Mastercard" className="h-6 w-auto" />
+            )}
+            <p>•••• •••• •••• {formData.payment.cardNumber.slice(-4)}</p>
+          </div>
+          <p className="text-sm">Expires: {formData.payment.expiryDate}</p>
+          <p className="text-sm">Cardholder: {formData.payment.cardName}</p>
         </div>
       </div>
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Order Summary</h3>
-        <div className="space-y-2">
+
+      {/* Order Summary Section */}
+      <div className="bg-white rounded-lg border p-6">
+        <div className="flex justify-between font-semibold text-lg">
+          <span>Amount to Pay</span>
+          <span className="text-primary">${total.toFixed(2)}</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderOrderSummary = () => (
+    <div className="lg:w-1/3">
+      <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
+        <h2 className="text-xl font-semibold mb-6 pb-4 border-b">Order Summary</h2>
+        <div className="space-y-4">
           {items.map((item) => (
-            <div key={item.id} className="flex justify-between">
-              <span>{item.name} × {item.quantity}</span>
-              <span>${(item.price * item.quantity).toFixed(2)}</span>
+            <div key={item.id} className="flex items-center gap-4">
+              <div className="relative">
+                <img 
+                  src={item.imageUrl} 
+                  alt={item.name} 
+                  className="w-20 h-20 object-cover rounded-md"
+                />
+                <div className="absolute -top-1 -right-1 bg-primary text-white text-xs font-medium rounded-full w-5 h-5 flex items-center justify-center">
+                  {item.quantity}
+                </div>
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-gray-900">{item.name}</p>
+                <p className="text-sm text-gray-500">
+                  {item.color} / {item.size}
+                </p>
+                <p className="text-sm text-gray-500">
+                  ${item.price} × {item.quantity} = <span className="font-medium text-primary">${(item.price * item.quantity).toFixed(2)}</span>
+                </p>
+              </div>
             </div>
           ))}
-          <div className="border-t pt-2">
-            <div className="flex justify-between">
+          
+          <div className="space-y-3 pt-4 border-t">
+            <div className="flex justify-between text-gray-600">
               <span>Subtotal</span>
               <span>${subtotal.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between text-gray-600">
               <span>Shipping</span>
               <span>${shipping.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between text-gray-600">
               <span>Tax</span>
               <span>${tax.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between font-semibold">
+            <div className="flex justify-between font-semibold text-lg pt-2 border-t">
               <span>Total</span>
-              <span>${total.toFixed(2)}</span>
+              <span className="text-primary">${total.toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -449,37 +568,7 @@ export function Checkout() {
           </div>
         </div>
 
-        <div className="lg:w-1/3">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-            <div className="space-y-2">
-              {items.map((item) => (
-                <div key={item.id} className="flex justify-between">
-                  <span>{item.name} × {item.quantity}</span>
-                  <span>${(item.price * item.quantity).toFixed(2)}</span>
-                </div>
-              ))}
-              <div className="border-t pt-2">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Shipping</span>
-                  <span>${shipping.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Tax</span>
-                  <span>${tax.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between font-semibold">
-                  <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        {renderOrderSummary()}
       </div>
     </div>
   );
