@@ -45,6 +45,12 @@ export function Checkout() {
     },
   });
   const [shippingErrors, setShippingErrors] = useState<ShippingErrors>({});
+  const [paymentErrors, setPaymentErrors] = useState({
+    cardNumber: "",
+    cardName: "",
+    expiryDate: "",
+    cvv: "",
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [hasExistingShippingInfo, setHasExistingShippingInfo] = useState(false);
   const [cardType, setCardType] = useState<CardType>('unknown');
@@ -182,6 +188,67 @@ export function Checkout() {
     handleInputChange("payment", "cvv", value);
   };
 
+  const validatePaymentForm = () => {
+    const errors = {
+      cardNumber: "",
+      cardName: "",
+      expiryDate: "",
+      cvv: "",
+    };
+    let isValid = true;
+
+    // Card number validation
+    const cardNumber = formData.payment.cardNumber.replace(/\s/g, '');
+    if (!cardNumber) {
+      errors.cardNumber = "Card number is required";
+      isValid = false;
+    } else if (cardNumber.length !== 16) {
+      errors.cardNumber = "Card number must be 16 digits";
+      isValid = false;
+    }
+
+    // Card name validation
+    if (!formData.payment.cardName.trim()) {
+      errors.cardName = "Cardholder name is required";
+      isValid = false;
+    }
+
+    // Expiry date validation
+    const expiryDate = formData.payment.expiryDate;
+    if (!expiryDate) {
+      errors.expiryDate = "Expiry date is required";
+      isValid = false;
+    } else {
+      const [month, year] = expiryDate.split('/');
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear() % 100;
+      const currentMonth = currentDate.getMonth() + 1;
+      
+      if (parseInt(month) < 1 || parseInt(month) > 12) {
+        errors.expiryDate = "Invalid month";
+        isValid = false;
+      }
+      
+      if (parseInt(year) < currentYear || 
+          (parseInt(year) === currentYear && parseInt(month) < currentMonth)) {
+        errors.expiryDate = "Card has expired";
+        isValid = false;
+      }
+    }
+
+    // CVV validation
+    if (!formData.payment.cvv) {
+      errors.cvv = "CVV is required";
+      isValid = false;
+    } else if (formData.payment.cvv.length !== 3) {
+      errors.cvv = "CVV must be 3 digits";
+      isValid = false;
+    }
+
+    setPaymentErrors(errors);
+    return isValid;
+  };
+
   const handleContinue = async () => {
     if (currentStep === "shipping") {
       if (validateShippingForm()) {
@@ -200,7 +267,9 @@ export function Checkout() {
         }
       }
     } else if (currentStep === "payment") {
-      setCurrentStep("review");
+      if (validatePaymentForm()) {
+        setCurrentStep("review");
+      }
     } else {
       // Handle order submission
       console.log("Submitting order...");
@@ -342,8 +411,8 @@ export function Checkout() {
             value={formData.payment.cardNumber}
             onChange={handleCardNumberChange}
             placeholder="XXXX XXXX XXXX XXXX"
-            maxLength={19} // 16 digits + 3 spaces
-            className="pr-12"
+            maxLength={19}
+            className={`pr-12 ${paymentErrors.cardNumber ? "border-red-500" : ""}`}
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
             {cardType === 'visa' && (
@@ -357,6 +426,9 @@ export function Checkout() {
             )}
           </div>
         </div>
+        {paymentErrors.cardNumber && (
+          <p className="text-sm text-red-500 mt-1">{paymentErrors.cardNumber}</p>
+        )}
       </div>
       <div>
         <label className="block text-sm font-medium mb-1">Cardholder Name</label>
@@ -364,8 +436,11 @@ export function Checkout() {
           value={formData.payment.cardName}
           onChange={handleCardNameChange}
           placeholder="JOHN DOE"
-          required
+          className={paymentErrors.cardName ? "border-red-500" : ""}
         />
+        {paymentErrors.cardName && (
+          <p className="text-sm text-red-500 mt-1">{paymentErrors.cardName}</p>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -375,8 +450,11 @@ export function Checkout() {
             onChange={handleExpiryDateChange}
             placeholder="MM/YY"
             maxLength={5}
-            required
+            className={paymentErrors.expiryDate ? "border-red-500" : ""}
           />
+          {paymentErrors.expiryDate && (
+            <p className="text-sm text-red-500 mt-1">{paymentErrors.expiryDate}</p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">CVV</label>
@@ -385,8 +463,11 @@ export function Checkout() {
             onChange={handleCVVChange}
             placeholder="123"
             maxLength={3}
-            required
+            className={paymentErrors.cvv ? "border-red-500" : ""}
           />
+          {paymentErrors.cvv && (
+            <p className="text-sm text-red-500 mt-1">{paymentErrors.cvv}</p>
+          )}
         </div>
       </div>
     </div>
