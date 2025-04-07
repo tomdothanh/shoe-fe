@@ -1,14 +1,15 @@
 import { useState, ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { useCart } from "@/lib/cartContext";
-import { ShoppingCart, CreditCard } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getShippingInfo, createShippingInfo, updateShippingInfo, getOrderDetails } from "@/clients/productClient";
-import { formatCardNumber, detectCardType, CardType } from "@/utils/cardUtils";
 import { Order, OrderItem } from "@/types";
+import { CardElement, CheckoutProvider, Elements, PaymentElement } from "@stripe/react-stripe-js";
+import { loadStripe, StripeCardElement } from "@stripe/stripe-js";
 
 type Step = "shipping" | "review" | "payment";
+const stripePromise = loadStripe("pk_test_51HNxXYDD1gzs0eda7fNveW34S0sHX4QE4ou0vJUotAlW99PkyFEbtAw53KgmDuAgOCRWuIHcSbtntjiV0WgmxpnG006o4Cy7Sa");
 
 interface ShippingErrors {
   firstName?: string;
@@ -23,7 +24,6 @@ interface ShippingErrors {
 }
 
 export function Checkout() {
-  const { items } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const [currentStep, setCurrentStep] = useState<Step>("shipping");
@@ -32,6 +32,10 @@ export function Checkout() {
   const [orderNumber, setOrderNumber] = useState<string>("");
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [order, setOrder] = useState<Order>();
+  const [cardElement, setCardElement] = useState<StripeCardElement>();
+  const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState<boolean>(false);
+  
   const [formData, setFormData] = useState({
     shipping: {
       firstName: "",
@@ -52,15 +56,8 @@ export function Checkout() {
     },
   });
   const [shippingErrors, setShippingErrors] = useState<ShippingErrors>({});
-  const [paymentErrors, setPaymentErrors] = useState({
-    cardNumber: "",
-    cardName: "",
-    expiryDate: "",
-    cvv: "",
-  });
   const [isLoading, setIsLoading] = useState(false);
   const [hasExistingShippingInfo, setHasExistingShippingInfo] = useState(false);
-  const [cardType, setCardType] = useState<CardType>('unknown');
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
@@ -179,103 +176,6 @@ export function Checkout() {
       }));
     }
   };
-
-  const handleCardNumberChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const formattedValue = formatCardNumber(e.target.value);
-    const type = detectCardType(formattedValue);
-    setCardType(type);
-    handleInputChange("payment", "cardNumber", formattedValue);
-  };
-
-  const handleCardNameChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toUpperCase();
-    handleInputChange("payment", "cardName", value);
-  };
-
-  const handleExpiryDateChange = (e: ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '');
-    
-    // Format as MM/YY
-    if (value.length > 2) {
-      value = value.slice(0, 2) + '/' + value.slice(2, 4);
-    }
-    
-    // Validate month (01-12)
-    const month = parseInt(value.slice(0, 2));
-    if (month > 12) {
-      value = '12' + value.slice(2);
-    }
-    
-    handleInputChange("payment", "expiryDate", value);
-  };
-
-  const handleCVVChange = (e: ChangeEvent<HTMLInputElement>) => {
-    // Only allow 3 digits
-    const value = e.target.value.replace(/\D/g, '').slice(0, 3);
-    handleInputChange("payment", "cvv", value);
-  };
-
-  const validatePaymentForm = () => {
-    const errors = {
-      cardNumber: "",
-      cardName: "",
-      expiryDate: "",
-      cvv: "",
-    };
-    let isValid = true;
-
-    // Card number validation
-    const cardNumber = formData.payment.cardNumber.replace(/\s/g, '');
-    if (!cardNumber) {
-      errors.cardNumber = "Card number is required";
-      isValid = false;
-    } else if (cardNumber.length !== 16) {
-      errors.cardNumber = "Card number must be 16 digits";
-      isValid = false;
-    }
-
-    // Card name validation
-    if (!formData.payment.cardName.trim()) {
-      errors.cardName = "Cardholder name is required";
-      isValid = false;
-    }
-
-    // Expiry date validation
-    const expiryDate = formData.payment.expiryDate;
-    if (!expiryDate) {
-      errors.expiryDate = "Expiry date is required";
-      isValid = false;
-    } else {
-      const [month, year] = expiryDate.split('/');
-      const currentDate = new Date();
-      const currentYear = currentDate.getFullYear() % 100;
-      const currentMonth = currentDate.getMonth() + 1;
-      
-      if (parseInt(month) < 1 || parseInt(month) > 12) {
-        errors.expiryDate = "Invalid month";
-        isValid = false;
-      }
-      
-      if (parseInt(year) < currentYear || 
-          (parseInt(year) === currentYear && parseInt(month) < currentMonth)) {
-        errors.expiryDate = "Card has expired";
-        isValid = false;
-      }
-    }
-
-    // CVV validation
-    if (!formData.payment.cvv) {
-      errors.cvv = "CVV is required";
-      isValid = false;
-    } else if (formData.payment.cvv.length !== 3) {
-      errors.cvv = "CVV must be 3 digits";
-      isValid = false;
-    }
-
-    setPaymentErrors(errors);
-    return isValid;
-  };
-
   const handleContinue = async () => {
     if (currentStep === "shipping") {
       if (validateShippingForm()) {
@@ -293,6 +193,28 @@ export function Checkout() {
           setIsLoading(false);
         }
       }
+    } else if (currentStep === 'payment') {
+      const stripe = await stripePromise;
+
+      if (stripe && cardElement) {
+        const { error } = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: {
+              card: cardElement,
+              billing_details: {
+                  name: 'Customer Name', // Replace with actual customer name
+              },
+          },
+        });
+
+        if (error) {
+          console.error("Payment error:", error);
+          setError(error.message || "An unknown error occurred"); // Show error to your customer
+        } else {
+          console.log("Payment successful");
+          setSuccess(true); // Payment succeeded
+        }
+      }
+     
     } else if (currentStep === "review") {
       setCurrentStep("payment");
     }
@@ -420,75 +342,16 @@ export function Checkout() {
   );
 
   const renderPaymentForm = () => (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium mb-1">Card Number</label>
-        <div className="relative">
-          <Input
-            value={formData.payment.cardNumber}
-            onChange={handleCardNumberChange}
-            placeholder="XXXX XXXX XXXX XXXX"
-            maxLength={19}
-            className={`pr-12 ${paymentErrors.cardNumber ? "border-red-500" : ""}`}
-          />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            {cardType === 'visa' && (
-              <img src="/visa.png" alt="Visa" className="h-6 w-auto" />
-            )}
-            {cardType === 'mastercard' && (
-              <img src="/mastercard.png" alt="Mastercard" className="h-6 w-auto" />
-            )}
-            {cardType === 'unknown' && (
-              <CreditCard className="h-6 w-6 text-gray-400" />
-            )}
-          </div>
-        </div>
-        {paymentErrors.cardNumber && (
-          <p className="text-sm text-red-500 mt-1">{paymentErrors.cardNumber}</p>
-        )}
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Cardholder Name</label>
-        <Input
-          value={formData.payment.cardName}
-          onChange={handleCardNameChange}
-          placeholder="JOHN DOE"
-          className={paymentErrors.cardName ? "border-red-500" : ""}
-        />
-        {paymentErrors.cardName && (
-          <p className="text-sm text-red-500 mt-1">{paymentErrors.cardName}</p>
-        )}
-      </div>
-      <div className="grid grid-cols-2 gap-4">
+    <Elements stripe={stripePromise}>
+      <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Expiry Date</label>
-          <Input
-            value={formData.payment.expiryDate}
-            onChange={handleExpiryDateChange}
-            placeholder="MM/YY"
-            maxLength={5}
-            className={paymentErrors.expiryDate ? "border-red-500" : ""}
-          />
-          {paymentErrors.expiryDate && (
-            <p className="text-sm text-red-500 mt-1">{paymentErrors.expiryDate}</p>
-          )}
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">CVV</label>
-          <Input
-            value={formData.payment.cvv}
-            onChange={handleCVVChange}
-            placeholder="123"
-            maxLength={3}
-            className={paymentErrors.cvv ? "border-red-500" : ""}
-          />
-          {paymentErrors.cvv && (
-            <p className="text-sm text-red-500 mt-1">{paymentErrors.cvv}</p>
-          )}
+            <label className="block text-sm font-medium mb-1">Card Details</label>
+            <CardElement onReady={(element) => setCardElement(element)} className="border p-2 rounded" />
         </div>
       </div>
-    </div>
+    </Elements>
   );
+
 
   const renderOrderReview = () => (
     <div className="space-y-8">
