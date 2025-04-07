@@ -39,7 +39,7 @@ export interface Order {
   totalAmount: number;
   status: String;
   clientSecret: string;
-  createdAt: Date;
+  createdAt: string;
 }
 
 export interface OrderItem {

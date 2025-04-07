@@ -24,6 +24,10 @@ export function Orders() {
     fetchOrders();
   }, []);
 
+  const goToCheckout = async (orderId: string) => {
+      navigate("/checkout", { state: { orderId: orderId } });
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -77,6 +81,14 @@ export function Orders() {
                   <span className="text-lg font-semibold">${order.totalAmount.toFixed(2)}</span>
                 </div>
               </div>
+              {order.status === 'PENDING_PAYMENT' && (
+                <Button 
+                  onClick={() => goToCheckout(order.id)} 
+                  className="mt-4"
+                >
+                  Check Out
+                </Button>
+              )}
             </div>
           ))}
         </div>
